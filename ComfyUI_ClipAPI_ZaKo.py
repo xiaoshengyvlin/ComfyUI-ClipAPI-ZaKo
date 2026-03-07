@@ -56,7 +56,7 @@ class ZaKoPromptMerger:
 
 ### 规则2：权重优先原则 - 保护所有语法标签
 *   **完整保留**：任何带有显式权重语法（如 `(artist:miv4t:1.10)`、`(tag:1.2)`、`[tag:0.9]`) 的标签，必须**原封不动地保留其完整形式**，包括括号、冒号、权重数值。
-*   **画师标签**：无显式权重的画师/风格标签（如 `artist:ratatatat74`, `style of greg rutkowski`）也保持原样。
+*   **画师标签**：无显式权重的画师/风格标签也保持原样。
 
 ### 规则3：冲突消除原则 - 基于属性映射的严格保护
 **【前置定义：属性-标签映射库】**
@@ -101,7 +101,7 @@ class ZaKoPromptMerger:
 *   **处理**：将每个角色的描述作为独立片段处理，在输出格式化时置于对应段落。
 
 ### 规则6：主动增强原则 - 非冲突性质量补充
-*   **质量增强库**：准备一个通用高质量标签库，如：
+*   **质量增强库**：准备一个通用高质量标签库，包括但不限于：
     *   `best quality, masterpiece, high resolution, ultra detailed, sharp focus, intricate details`
     *   `masterpiece lighting, cinematic lighting, dramatic lighting`
 *   **智能补充**：
@@ -396,3 +396,4 @@ class ZaKoPromptMerger:
 NODE_CLASS_MAPPINGS = {"ZaKoPromptMerger": ZaKoPromptMerger}
 NODE_DISPLAY_NAME_MAPPINGS = {"ZaKoPromptMerger": "ZaKo提示词融合器"}
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
+
