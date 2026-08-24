@@ -1,7 +1,7 @@
 [project]
 name = "ComfyUI-ClipAPI-ZaKo"
 description = "随机提示词固定人物：通过 LLM 融合固定人物提示词与随机提示词，支持多 API 适配"
-version = "1.1.0"
+version = "1.1.1"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [
