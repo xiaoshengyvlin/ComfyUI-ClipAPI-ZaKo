@@ -22,3 +22,8 @@
 ## 相关项目
 
 - [ComfyUI-MetaData-ZaKo](https://github.com/xiaoshengyvlin/ComfyUI-MetaData-ZaKo) - 图片元信息置换插件
+
+## 更新日志
+
+- 26.2.26-项目创建
+- 26.8.24-优化API的泄露问题，支持多API适配
