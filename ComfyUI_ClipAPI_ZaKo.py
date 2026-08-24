@@ -259,11 +259,13 @@ class ZaKoPromptMerger:
 
     @staticmethod
     def _parse_api_result(data: Dict[str, Any]) -> str:
-        content = (
-            data.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-        )
+        choices = data.get("choices") or []
+        if not isinstance(choices, list) or not choices:
+            return ""
+        message = choices[0].get("message") or {}
+        if not isinstance(message, dict):
+            return ""
+        content = message.get("content", "")
         return content.strip() if isinstance(content, str) else ""
 
     def _call_api(
@@ -294,7 +296,8 @@ class ZaKoPromptMerger:
         if seed >= 0:
             payload["seed"] = seed
 
-        url = f"{api_base.rstrip('/')}/chat/completions"
+        base = api_base.rstrip("/")
+        url = base if base.endswith("/chat/completions") else f"{base}/chat/completions"
         resp = session.post(
             url,
             json=payload,

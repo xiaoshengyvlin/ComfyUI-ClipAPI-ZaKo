@@ -1,6 +1,7 @@
 import { app } from "../../../scripts/app.js";
 
 
+// 默认地址映射需与 Python 端 PROVIDERS 保持一致
 const PROVIDER_BASES = {
     "硅基流动": "https://api.siliconflow.cn/v1",
     "OpenAI": "https://api.openai.com/v1",
@@ -20,6 +21,12 @@ app.registerExtension({
     async beforeRegisterNodeDef(nodeType, nodeData) {
         if (nodeData.name !== "ZaKoPromptMerger") return;
 
+        // 提供商列表从节点定义动态读取，与 Python 端单一来源
+        const definedOptions = nodeData.input?.optional?.["API提供商"];
+        const providerOptions = Array.isArray(definedOptions) && definedOptions.length
+            ? definedOptions
+            : Object.keys(PROVIDER_BASES);
+
         const origOnNodeCreated = nodeType.prototype.onNodeCreated;
         nodeType.prototype.onNodeCreated = function () {
             const r = origOnNodeCreated?.apply(this, arguments);
@@ -32,7 +39,7 @@ app.registerExtension({
             const loadKey = (provider) => localStorage.getItem(`${KEY_STORAGE_PREFIX}_${provider}`) || "";
             const saveKey = (provider, value) => localStorage.setItem(`${KEY_STORAGE_PREFIX}_${provider}`, value || "");
 
-            let curProvider = providerWidget.value || Object.keys(PROVIDER_BASES)[0];
+            let curProvider = providerWidget.value || providerOptions[0];
 
             // 密钥不随工作流序列化，仅存本机浏览器
             apiKeyWidget.serialize = false;
