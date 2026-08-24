@@ -1,6 +1,7 @@
 import threading
 import logging
 from typing import Dict, Optional, Tuple, Any
+from urllib.parse import urlparse
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -15,7 +16,17 @@ logger = logging.getLogger("ZaKoPromptMerger")
 
 
 class ZaKoPromptMerger:
-    API_URL = "https://api.siliconflow.cn/v1/chat/completions"
+    # 预设 API 提供商及其默认地址（均为 OpenAI 兼容接口）
+    PROVIDERS = {
+        "硅基流动": "https://api.siliconflow.cn/v1",
+        "OpenAI": "https://api.openai.com/v1",
+        "DeepSeek": "https://api.deepseek.com/v1",
+        "通义千问": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "智谱GLM": "https://open.bigmodel.cn/api/paas/v4",
+        "月之暗面Kimi": "https://api.moonshot.cn/v1",
+        "Ollama本地": "http://localhost:11434/v1",
+    }
+    API_BASE_DEFAULT = "https://api.siliconflow.cn/v1"
 
     # 跑图默认优化参数
     DEFAULT_CONNECT_TIMEOUT = 10
@@ -127,11 +138,23 @@ class ZaKoPromptMerger:
                 "备用1": ("STRING", {"forceInput": True}),
                 "备用2": ("STRING", {"forceInput": True}),
 
-                # 【密钥输入区】恢复纯手动输入，填了就用
+                # 【API配置区】
+                "API提供商": ("COMBO", {
+                    "options": list(cls.PROVIDERS.keys()),
+                    "label": "API提供商（切换后自动填入下方地址）",
+                }),
+                "API地址": ("STRING", {
+                    "default": cls.API_BASE_DEFAULT,
+                    "label": "API地址（OpenAI兼容，可自定义）",
+                    "placeholder": "https://.../v1",
+                    "widget": "textbox"
+                }),
+
+                # 【密钥输入区】密钥仅存本机浏览器，不随工作流序列化分享
                 "硅基流动密钥": ("STRING", {
                     "default": "",
-                    "label": "硅基流动密钥（必填，分享工作流前请清空！）",
-                    "placeholder": "sk-xxx 从硅基流动控制台获取",
+                    "label": "API密钥（仅存本机浏览器，分享工作流不含）",
+                    "placeholder": "从对应API控制台获取，本地Ollama可留空",
                     "widget": "textbox"
                 }),
 
@@ -178,7 +201,7 @@ class ZaKoPromptMerger:
     RETURN_NAMES = ("融合后提示词",)
     FUNCTION = "merge_prompts"
     CATEGORY = "ZaKo"
-    DESCRIPTION = "ZaKo提示词融合器（纯手动密钥·默认DeepSeek-V3.2·无缓存·跑图专用）"
+    DESCRIPTION = "ZaKo提示词融合器（密钥仅存本机·多API适配·无缓存·跑图专用）"
 
     # ---------- 极简工具函数 ----------
     @staticmethod
@@ -246,6 +269,7 @@ class ZaKoPromptMerger:
     def _call_api(
         self,
         session: requests.Session,
+        api_base: str,
         api_key: str,
         model_name: str,
         final_prompt: str,
@@ -270,8 +294,9 @@ class ZaKoPromptMerger:
         if seed >= 0:
             payload["seed"] = seed
 
+        url = f"{api_base.rstrip('/')}/chat/completions"
         resp = session.post(
-            self.API_URL,
+            url,
             json=payload,
             headers=headers,
             timeout=(connect_timeout, read_timeout),
@@ -297,14 +322,15 @@ class ZaKoPromptMerger:
             current_run_count = self._add_run_count()
             logger.info(f"===== 开始处理第{current_run_count}张图的随机提示词 =====")
 
-            # 【核心】直接读取手动输入的密钥，无任何复杂逻辑
+            # 【API配置】提供商 + 地址 + 密钥（密钥仅存本机浏览器，不随工作流序列化）
+            provider = self._trim(kwargs.get("API提供商", "硅基流动")) or "硅基流动"
+            api_base = self._trim(kwargs.get("API地址", "")) or self.PROVIDERS.get(provider) or self.API_BASE_DEFAULT
             api_key = self._trim(kwargs.get("硅基流动密钥", ""))
-            if not api_key:
-                error_msg = f"❌ 第{current_run_count}张图失败：请填写硅基流动密钥"
-                logger.error(error_msg)
-                return (error_msg,)
-            if not api_key.startswith("sk-"):
-                error_msg = f"❌ 第{current_run_count}张图失败：密钥格式错误，应为sk-xxx开头"
+
+            hostname = urlparse(api_base).hostname or ""
+            is_local = hostname in ("localhost", "127.0.0.1", "::1")
+            if not api_key and not is_local:
+                error_msg = f"❌ 第{current_run_count}张图失败：请填写API密钥（本地Ollama可留空）"
                 logger.error(error_msg)
                 return (error_msg,)
 
@@ -352,6 +378,7 @@ class ZaKoPromptMerger:
             try:
                 result, status_code, error_detail = self._call_api(
                     session=session,
+                    api_base=api_base,
                     api_key=api_key,
                     model_name=model_name,
                     final_prompt=final_api_prompt,
